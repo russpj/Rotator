@@ -34,7 +34,7 @@ infoFromState = {
 	AppState.Ready: AppInfo(statusText='Ready', 
 												 startInfo=ButtonInfo(text='Reverse', enabled=True)),
 	AppState.Finished: AppInfo(statusText='Done', 
-												 startInfo=ButtonInfo(text='Reset', enabled=False))
+												 startInfo=ButtonInfo(text='Reset', enabled=True))
 	}
 
 
@@ -175,7 +175,7 @@ class Rotator(App):
 		# self.boardLayout.InitBoard(board)
 
 		# self.generator = self.solver.Generate()
-		Clock.schedule_interval(self.FrameN, 0.0)
+		# Clock.schedule_interval(self.FrameN, 0.0)
 
 		return layout
 
@@ -200,9 +200,12 @@ class Rotator(App):
 		self.footer.UpdateButtons(appInfo=appInfo)
 
 	def StartButtonCallback(self, instance):
+		if self.state==AppState.Ready:
+			self.boardLayout.UpdateColors(range(9, -1, -1))
+		if self.state==AppState.Finished:
+			self.boardLayout.UpdateColors(range(0, 10))
 		self.state = nextState[self.state]
 		self.UpdateUX(state=self.state)
-		self.boardLayout.UpdateColors([2, 3, 4 ,5, 6, 7, 8, 9, 0, 1])
 
 
 def Main():
