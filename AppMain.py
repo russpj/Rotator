@@ -15,6 +15,9 @@ class AppState(Enum):
 	Running = 2
 	Finished = 5
 
+class Algorithm(Enum):
+	Reverse = 1
+
 nextState={
 	AppState.Ready: AppState.Running,
 	AppState.Running: AppState.Finished,
@@ -160,13 +163,17 @@ class Rotator(App):
 	def build(self):
 		self.root = layout = BoxLayout(orientation = 'vertical')
 		self.state = AppState.Ready
+		self.algorithm = Algorithm.Reverse
+		self.clock=None
+		self.generator=None
+		self.array = list(range(10))
 
 		# header
 		self.header = HeaderLayout(size_hint=(1, .1))
 		layout.add_widget(self.header)
 
 		# board
-		self.boardLayout = boardLayout = BoardLayout(10)
+		self.boardLayout = boardLayout = BoardLayout(len(self.array))
 		layout.add_widget(boardLayout)
 
 		# footer
@@ -184,18 +191,23 @@ class Rotator(App):
 		return layout
 
 	def FrameN(self, dt):
+		if self.generator is None:
+			return
 		if dt != 0:
 			fpsValue = 1/dt
 		else:
 			fpsValue = 0
-		if self.state==AppState.Finished:
+		if (self.state==AppState.Finished or self.state==AppState.Ready):
 			return
 
 		try:
-			# result = next(self.generator)
+			result = next(self.generator)
+			self.boardLayout.UpdateColors(self.array)
 			self.UpdateUX(fps=fpsValue, state=self.state)
 		except StopIteration:
-			# kill the timer
+			self.state=AppState.Finished
+			self.clock.cancel()
+			self.generator=None
 			self.UpdateUX(fps=fpsValue, state=self.state)
 
 	def UpdateUX(self, fps=0, state=AppState.Ready):
@@ -205,13 +217,14 @@ class Rotator(App):
 
 	def StartButtonCallback(self, instance):
 		if self.state==AppState.Ready:
-			array = list(range(10))
-			self.state=nextState[self.state]
-			self.UpdateUX(state=self.state)
-			Reverse(array)
-			self.boardLayout.UpdateColors(array)
+			self.array = list(range(10))
+			self.generator=Reverse(self.array)
+			self.clock = Clock.schedule_interval(self.FrameN, 1.0)
+		if self.state==AppState.Running:
+			self.clock.cancel()
 		if self.state==AppState.Finished:
-			self.boardLayout.UpdateColors(range(0, 10))
+			self.array = list(range(10))
+			self.boardLayout.UpdateColors(self.array)
 		self.state = nextState[self.state]
 		self.UpdateUX(state=self.state)
 
