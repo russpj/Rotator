@@ -8,14 +8,16 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.clock import Clock
-
+from Rotators import Reverse
 
 class AppState(Enum):
 	Ready = 1
+	Running = 2
 	Finished = 5
 
 nextState={
-	AppState.Ready: AppState.Finished,
+	AppState.Ready: AppState.Running,
+	AppState.Running: AppState.Finished,
 	AppState.Finished: AppState.Ready
 	}
 
@@ -33,6 +35,8 @@ class AppInfo:
 infoFromState = {
 	AppState.Ready: AppInfo(statusText='Ready', 
 												 startInfo=ButtonInfo(text='Reverse', enabled=True)),
+	AppState.Running: AppInfo(statusText='Running', 
+												 startInfo=ButtonInfo(text='Pause', enabled=True)),
 	AppState.Finished: AppInfo(statusText='Done', 
 												 startInfo=ButtonInfo(text='Reset', enabled=True))
 	}
@@ -201,7 +205,11 @@ class Rotator(App):
 
 	def StartButtonCallback(self, instance):
 		if self.state==AppState.Ready:
-			self.boardLayout.UpdateColors(range(9, -1, -1))
+			array = list(range(10))
+			self.state=nextState[self.state]
+			self.UpdateUX(state=self.state)
+			Reverse(array)
+			self.boardLayout.UpdateColors(array)
 		if self.state==AppState.Finished:
 			self.boardLayout.UpdateColors(range(0, 10))
 		self.state = nextState[self.state]
