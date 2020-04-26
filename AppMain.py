@@ -8,7 +8,7 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.clock import Clock
-from Rotators import ReverseAll, ReverseRotation
+from Rotators import ReverseAll, ReverseRotation, SwapRotation
 
 class AppState(Enum):
 	Ready = 1
@@ -27,10 +27,12 @@ nextState={
 class Algorithm(Enum):
 	Reverse = 1
 	ReverseRotation=2
+	SwapRotation=3
 
 nextAlgorithm={
 	Algorithm.Reverse: Algorithm.ReverseRotation,
-	Algorithm.ReverseRotation:Algorithm.Reverse
+	Algorithm.ReverseRotation: Algorithm.SwapRotation,
+	Algorithm.SwapRotation: Algorithm.Reverse
 	}
 
 class AlgorithmInfo:
@@ -40,7 +42,8 @@ class AlgorithmInfo:
 
 infoFromAlgorithm = {
 	Algorithm.Reverse: AlgorithmInfo('Reverse', ReverseAll),
-	Algorithm.ReverseRotation: AlgorithmInfo('Rotation by Reverse', ReverseRotation)
+	Algorithm.ReverseRotation: AlgorithmInfo('Rotation by Reverse', ReverseRotation),
+	Algorithm.SwapRotation: AlgorithmInfo('Rotation by Swapping', SwapRotation)
 	}
 
 
