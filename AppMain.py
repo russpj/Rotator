@@ -8,22 +8,39 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.clock import Clock
-from Rotators import Reverse
+from Rotators import ReverseAll, ReverseRotation
 
 class AppState(Enum):
 	Ready = 1
 	Running = 2
 	Finished = 5
 
-class Algorithm(Enum):
-	Reverse = 1
-
-
 nextState={
 	AppState.Ready: AppState.Running,
 	AppState.Running: AppState.Finished,
 	AppState.Finished: AppState.Ready
 	}
+
+
+class Algorithm(Enum):
+	Reverse = 1
+	ReverseRotation=2
+
+nextAlgorithm={
+	Algorithm.Reverse: Algorithm.ReverseRotation,
+	Algorithm.ReverseRotation:Algorithm.Reverse
+	}
+
+class AlgorithmInfo:
+	def __init__(self, buttonText='', algorithm=None):
+		self.buttonText = buttonText
+		self.algorithm = algorithm
+
+infoFromAlgorithm = {
+	Algorithm.Reverse: AlgorithmInfo('Reverse', ReverseAll),
+	Algorithm.ReverseRotation: AlgorithmInfo('Rotation by Reverse', ReverseRotation)
+	}
+
 
 class Speed(Enum):
 	Slow=1
@@ -55,20 +72,25 @@ class ButtonInfo:
 class AppInfo:
 	def __init__(self, statusText='', 
 							startInfo=ButtonInfo(),
+							algorithmInfo=ButtonInfo(),
 							speedInfo=ButtonInfo()):
 		self.statusText=statusText
 		self.startInfo=startInfo
+		self.algorithmInfo=algorithmInfo
 		self.speedInfo=speedInfo
 
 infoFromState = {
 	AppState.Ready: AppInfo(statusText='Ready', 
 												 startInfo=ButtonInfo(text='Reverse', enabled=True),
+												 algorithmInfo=ButtonInfo(text='Change Algorithm', enabled=True),
 												 speedInfo=ButtonInfo(text='Change Speed', enabled=True)),
 	AppState.Running: AppInfo(statusText='Running', 
 												 startInfo=ButtonInfo(text='Pause', enabled=True),
+												 algorithmInfo=ButtonInfo(text='Change Algorithm', enabled=False),
 												 speedInfo=ButtonInfo(text='Change Speed', enabled=False)),
 	AppState.Finished: AppInfo(statusText='Done', 
 												 startInfo=ButtonInfo(text='Reset', enabled=True),
+												 algorithmInfo=ButtonInfo(text='Change Algorithm', enabled=True),
 												 speedInfo=ButtonInfo(text='Change Speed', enabled=True))
 	}
 
@@ -168,10 +190,12 @@ class FooterLayout(BoxLayout):
 	def __init__(self, 
 							start_button_callback=None, 
 							speed_button_callback=None, 
+							algorithm_button_callback=None, 
 							**kwargs):
 		super().__init__(orientation='horizontal', padding=10, **kwargs)
 		self.start_button_callback=start_button_callback
 		self.speed_button_callback=speed_button_callback
+		self.algorithm_button_callback=algorithm_button_callback
 		self.PlaceStuff()
 		self.bind(pos=self.update_rect, size=self.update_rect)
 
@@ -183,7 +207,10 @@ class FooterLayout(BoxLayout):
 		self.speedButton = Button()
 		self.add_widget(self.speedButton)
 		self.speedButton.bind(on_press=self.speed_button_callback)
-		self.startButton = Button(text='')
+		self.algorithmButton = Button()
+		self.add_widget(self.algorithmButton)
+		self.algorithmButton.bind(on_press=self.algorithm_button_callback)
+		self.startButton = Button()
 		self.add_widget(self.startButton)
 		self.startButton.bind(on_press=self.start_button_callback)
 		self.UpdateButtons()
@@ -199,7 +226,10 @@ class FooterLayout(BoxLayout):
 		speedInfo = appInfo.speedInfo
 		self.speedButton.text=speedInfo.text
 		self.speedButton.disabled = not speedInfo.enabled
-		
+		algorithmInfo = appInfo.algorithmInfo
+		self.algorithmButton.text = algorithmInfo.text
+		self.algorithmButton.disabled = not algorithmInfo.enabled
+
 
 class Rotator(App):
 	def build(self):
@@ -209,6 +239,7 @@ class Rotator(App):
 		self.clock=None
 		self.generator=None
 		self.simulationLength = 100
+		self.rotationShift = 33
 		self.array = list(range(self.simulationLength))
 		self.speed = Speed.Slow
 
@@ -223,10 +254,11 @@ class Rotator(App):
 		# footer
 		self.footer = FooterLayout(size_hint=(1, .2), 
 														 start_button_callback=self.StartButtonCallback,
+														 algorithm_button_callback=self.AlgorithmButtonCallback,
 														 speed_button_callback=self.SpeedButtonCallback)
 		layout.add_widget(self.footer)
 
-		self.UpdateUX(state=self.state, speed=self.speed)
+		self.UpdateUX()
 		return layout
 
 	def FrameN(self, dt):
@@ -242,14 +274,17 @@ class Rotator(App):
 		try:
 			result = next(self.generator)
 			self.boardLayout.UpdateColors(self.array)
-			self.UpdateUX(fps=fpsValue, state=self.state, speed=self.speed)
+			self.UpdateUX(fps=fpsValue)
 		except StopIteration:
 			self.state=AppState.Finished
 			self.clock.cancel()
 			self.generator=None
-			self.UpdateUX(fps=fpsValue, state=self.state, speed=self.speed)
+			self.UpdateUX(fps=fpsValue)
 
-	def UpdateUX(self, fps=0, state=AppState.Ready, speed=Speed.Slow):
+	def UpdateUX(self, fps=0):
+		state = self.state
+		speed = self.speed
+		algorithm = self.algorithm
 		appInfo = infoFromState[self.state]
 		self.header.UpdateText(fps = fps, speedText=infoFromSpeed[speed].statusText)
 		self.footer.UpdateButtons(appInfo=appInfo)
@@ -257,7 +292,8 @@ class Rotator(App):
 	def StartButtonCallback(self, instance):
 		if self.state==AppState.Ready:
 			self.array = list(range(self.simulationLength))
-			self.generator=Reverse(self.array)
+			algorithm = infoFromAlgorithm[self.algorithm].algorithm
+			self.generator=algorithm(self.array, self.rotationShift)
 			self.clock = Clock.schedule_interval(self.FrameN, 
 																				1.0/infoFromSpeed[self.speed].fps)
 		if self.state==AppState.Running:
@@ -266,11 +302,15 @@ class Rotator(App):
 			self.array = list(range(self.simulationLength))
 			self.boardLayout.UpdateColors(self.array)
 		self.state = nextState[self.state]
-		self.UpdateUX(state=self.state, speed=self.speed)
+		self.UpdateUX()
+
+	def AlgorithmButtonCallback(self, instance):
+		self.algorithm = nextAlgorithm[self.algorithm]
+		self.UpdateUX()
 
 	def SpeedButtonCallback(self, instance):
 		self.speed = nextSpeed[self.speed]
-		self.UpdateUX(speed=self.speed)
+		self.UpdateUX()
 
 
 def Main():

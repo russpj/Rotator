@@ -12,10 +12,19 @@ def Swap(array, left, right):
 	yield 1
 
 
-def Reverse(array):
-	left = 0
-	right = len(array)-1
-	while left<right:
-		yield from Swap(array, left, right)
-		left += 1
-		right -= 1
+def ReverseAll(array, shift):
+	yield from Reverse(array, 0, len(array))
+
+def Reverse(array, start, finish):
+	finish -= 1
+	while start<finish:
+		yield from Swap(array, start, finish)
+		start += 1
+		finish -= 1
+
+
+def ReverseRotation(array, shift):
+	yield from Reverse(array, 0, len(array))
+	shift = len(array)-shift
+	yield from Reverse(array, 0, shift)
+	yield from Reverse(array, shift, len(array))
