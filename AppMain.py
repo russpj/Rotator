@@ -80,18 +80,18 @@ class AppInfo:
 		self.speedInfo=speedInfo
 
 infoFromState = {
-	AppState.Ready: AppInfo(statusText='Ready', 
-												 startInfo=ButtonInfo(text='Reverse', enabled=True),
+	AppState.Ready: AppInfo(statusText='Ready with {algorithm}', 
+												 startInfo=ButtonInfo(text='Start', enabled=True),
 												 algorithmInfo=ButtonInfo(text='Change Algorithm', enabled=True),
 												 speedInfo=ButtonInfo(text='Change Speed', enabled=True)),
-	AppState.Running: AppInfo(statusText='Running', 
+	AppState.Running: AppInfo(statusText='Running {algorithm}', 
 												 startInfo=ButtonInfo(text='Pause', enabled=True),
 												 algorithmInfo=ButtonInfo(text='Change Algorithm', enabled=False),
 												 speedInfo=ButtonInfo(text='Change Speed', enabled=False)),
-	AppState.Finished: AppInfo(statusText='Done', 
+	AppState.Finished: AppInfo(statusText='Done with {algorithm}', 
 												 startInfo=ButtonInfo(text='Reset', enabled=True),
-												 algorithmInfo=ButtonInfo(text='Change Algorithm', enabled=True),
-												 speedInfo=ButtonInfo(text='Change Speed', enabled=True))
+												 algorithmInfo=ButtonInfo(text='Change Algorithm', enabled=False),
+												 speedInfo=ButtonInfo(text='Change Speed', enabled=False))
 	}
 
 
@@ -176,10 +176,10 @@ class HeaderLayout(BoxLayout):
 		self.fpsLabel = Label(text='0 fps', color=textColor)
 		self.add_widget(self.fpsLabel)
 		
-	def UpdateText(self, fps=0, statusText='Ready', speedText=''):
+	def UpdateText(self, fps=0, statusText='Ready', algorithm='', speedText=''):
 		self.speedLabel.text='Animation speed: {speed}'.format(speed=speedText)
 		self.fpsLabel.text = '{fpsValue:.0f} fps'.format(fpsValue=fps)
-		self.statusLabel.text = statusText
+		self.statusLabel.text = statusText.format(algorithm=algorithm)
 
 	def update_rect(self, instance, value):
 		instance.rect.pos = instance.pos
@@ -286,7 +286,10 @@ class Rotator(App):
 		speed = self.speed
 		algorithm = self.algorithm
 		appInfo = infoFromState[self.state]
-		self.header.UpdateText(fps = fps, speedText=infoFromSpeed[speed].statusText)
+		self.header.UpdateText(fps = fps, 
+												 statusText=appInfo.statusText, 
+												 algorithm=infoFromAlgorithm[algorithm].buttonText,
+												 speedText=infoFromSpeed[speed].statusText)
 		self.footer.UpdateButtons(appInfo=appInfo)
 
 	def StartButtonCallback(self, instance):
