@@ -13,11 +13,13 @@ from Rotators import ReverseAll, ReverseRotation
 class AppState(Enum):
 	Ready = 1
 	Running = 2
+	Paused = 3
 	Finished = 5
 
 nextState={
 	AppState.Ready: AppState.Running,
-	AppState.Running: AppState.Finished,
+	AppState.Running: AppState.Paused,
+	AppState.Paused: AppState.Running,
 	AppState.Finished: AppState.Ready
 	}
 
@@ -86,6 +88,10 @@ infoFromState = {
 												 speedInfo=ButtonInfo(text='Change Speed', enabled=True)),
 	AppState.Running: AppInfo(statusText='Running {algorithm}', 
 												 startInfo=ButtonInfo(text='Pause', enabled=True),
+												 algorithmInfo=ButtonInfo(text='Change Algorithm', enabled=False),
+												 speedInfo=ButtonInfo(text='Change Speed', enabled=False)),
+	AppState.Paused: AppInfo(statusText='Paused {algorithm}', 
+												 startInfo=ButtonInfo(text='Resume', enabled=True),
 												 algorithmInfo=ButtonInfo(text='Change Algorithm', enabled=False),
 												 speedInfo=ButtonInfo(text='Change Speed', enabled=False)),
 	AppState.Finished: AppInfo(statusText='Done with {algorithm}', 
@@ -292,15 +298,20 @@ class Rotator(App):
 												 speedText=infoFromSpeed[speed].statusText)
 		self.footer.UpdateButtons(appInfo=appInfo)
 
+	def StartClock(self):
+			self.clock = Clock.schedule_interval(self.FrameN, 
+																				1.0/infoFromSpeed[self.speed].fps)
+
 	def StartButtonCallback(self, instance):
 		if self.state==AppState.Ready:
 			self.array = list(range(self.simulationLength))
 			algorithm = infoFromAlgorithm[self.algorithm].algorithm
 			self.generator=algorithm(self.array, self.rotationShift)
-			self.clock = Clock.schedule_interval(self.FrameN, 
-																				1.0/infoFromSpeed[self.speed].fps)
+			self.StartClock()
 		if self.state==AppState.Running:
 			self.clock.cancel()
+		if self.state==AppState.Paused:
+			self.StartClock()
 		if self.state==AppState.Finished:
 			self.array = list(range(self.simulationLength))
 			self.boardLayout.UpdateColors(self.array)
