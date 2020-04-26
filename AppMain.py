@@ -205,6 +205,7 @@ class BoardLayout(BoxLayout):
 		
 	def UpdateColors(self, colorIndices=None, colorTargetIndices=None):
 		self.UpdateColorsHelper(self.colors, colorIndices, self.colorValues)
+		self.UpdateColorsHelper(self.targetColors, colorTargetIndices, self.colorValues)
 
 
 class HeaderLayout(BoxLayout):
@@ -345,6 +346,16 @@ class Rotator(App):
 			self.clock = Clock.schedule_interval(self.FrameN, 
 																				1.0/infoFromSpeed[self.speed].fps)
 
+	def Reset(self):
+			array = list(range(self.simulationLength))
+			self.array = array.copy()
+			if self.algorithm == Algorithm.Reverse:
+				array.reverse()
+				arrayTarget = array
+			else:
+				arrayTarget = array[self.rotationShift::] + array[:self.rotationShift:]
+			self.boardLayout.UpdateColors(self.array, arrayTarget)
+
 	def StartButtonCallback(self, instance):
 		if self.state==AppState.Ready:
 			self.array = list(range(self.simulationLength))
@@ -356,13 +367,13 @@ class Rotator(App):
 		if self.state==AppState.Paused:
 			self.StartClock()
 		if self.state==AppState.Finished:
-			self.array = list(range(self.simulationLength))
-			self.boardLayout.UpdateColors(self.array)
+			self.Reset()
 		self.state = nextState[self.state]
 		self.UpdateUX()
 
 	def AlgorithmButtonCallback(self, instance):
 		self.algorithm = nextAlgorithm[self.algorithm]
+		self.Reset()
 		self.UpdateUX()
 
 	def SpeedButtonCallback(self, instance):
