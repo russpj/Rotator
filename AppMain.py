@@ -88,19 +88,19 @@ class AppInfo:
 		self.speedInfo=speedInfo
 
 infoFromState = {
-	AppState.Ready: AppInfo(statusText='Ready with {algorithm}', 
+	AppState.Ready: AppInfo(statusText='{algorithm}', 
 												 startInfo=ButtonInfo(text='Start', enabled=True),
 												 algorithmInfo=ButtonInfo(text='Change Algorithm', enabled=True),
 												 speedInfo=ButtonInfo(text='Change Speed', enabled=True)),
-	AppState.Running: AppInfo(statusText='Running {algorithm}', 
+	AppState.Running: AppInfo(statusText='{algorithm} Running', 
 												 startInfo=ButtonInfo(text='Pause', enabled=True),
 												 algorithmInfo=ButtonInfo(text='Change Algorithm', enabled=False),
 												 speedInfo=ButtonInfo(text='Change Speed', enabled=False)),
-	AppState.Paused: AppInfo(statusText='Paused {algorithm}', 
+	AppState.Paused: AppInfo(statusText='{algorithm} Paused', 
 												 startInfo=ButtonInfo(text='Resume', enabled=True),
 												 algorithmInfo=ButtonInfo(text='Change Algorithm', enabled=False),
 												 speedInfo=ButtonInfo(text='Change Speed', enabled=True)),
-	AppState.Finished: AppInfo(statusText='Done with {algorithm}', 
+	AppState.Finished: AppInfo(statusText='{algorithm} Done', 
 												 startInfo=ButtonInfo(text='Reset', enabled=True),
 												 algorithmInfo=ButtonInfo(text='Change Algorithm', enabled=False),
 												 speedInfo=ButtonInfo(text='Change Speed', enabled=False))
@@ -219,15 +219,15 @@ class HeaderLayout(BoxLayout):
 			Color(0.6, .6, 0.1, 1)  # yellow; colors range from 0-1 not 0-255
 			self.rect = Rectangle(size=self.size, pos=self.pos)
 		textColor = [0.7,0.05, 0.7, 1]
-		self.speedLabel = Label(text='Animation speed: ', color=textColor)
+		self.speedLabel = Label(text='Speed: ', color=textColor, size_hint=[.25, 1])
 		self.add_widget(self.speedLabel)
 		self.statusLabel = Label(text='Ready', color = textColor)
 		self.add_widget(self.statusLabel)
-		self.fpsLabel = Label(text='0 fps', color=textColor)
+		self.fpsLabel = Label(text='0 fps', color=textColor, size_hint=[.2, 1])
 		self.add_widget(self.fpsLabel)
 		
 	def UpdateText(self, fps=0, statusText='Ready', algorithm='', speedText=''):
-		self.speedLabel.text='Animation speed: {speed}'.format(speed=speedText)
+		self.speedLabel.text='Speed: {speed}'.format(speed=speedText)
 		self.fpsLabel.text = '{fpsValue:.0f} fps'.format(fpsValue=fps)
 		self.statusLabel.text = statusText.format(algorithm=algorithm)
 
