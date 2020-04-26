@@ -18,10 +18,33 @@ class AppState(Enum):
 class Algorithm(Enum):
 	Reverse = 1
 
+
 nextState={
 	AppState.Ready: AppState.Running,
 	AppState.Running: AppState.Finished,
 	AppState.Finished: AppState.Ready
+	}
+
+class Speed(Enum):
+	Slow=1
+	Medium=2
+	Fast=3
+
+nextSpeed={
+	Speed.Slow: Speed.Medium,
+	Speed.Medium: Speed.Fast,
+	Speed.Fast: Speed.Slow
+	}
+
+class SpeedInfo:
+	def __init__(self, statusText='', fps=0):
+		self.statusText=statusText
+		self.fps=fps
+
+infoFromSpeed = {
+	Speed.Slow: SpeedInfo(statusText='Slow', fps=1),
+	Speed.Medium: SpeedInfo(statusText='Medium', fps=10),
+	Speed.Fast: SpeedInfo(statusText='High', fps=100)
 	}
 
 class ButtonInfo:
@@ -31,17 +54,22 @@ class ButtonInfo:
 
 class AppInfo:
 	def __init__(self, statusText='', 
-							startInfo=ButtonInfo()):
+							startInfo=ButtonInfo(),
+							speedInfo=ButtonInfo()):
 		self.statusText=statusText
 		self.startInfo=startInfo
+		self.speedInfo=speedInfo
 
 infoFromState = {
 	AppState.Ready: AppInfo(statusText='Ready', 
-												 startInfo=ButtonInfo(text='Reverse', enabled=True)),
+												 startInfo=ButtonInfo(text='Reverse', enabled=True),
+												 speedInfo=ButtonInfo(text='Change Speed', enabled=True)),
 	AppState.Running: AppInfo(statusText='Running', 
-												 startInfo=ButtonInfo(text='Pause', enabled=True)),
+												 startInfo=ButtonInfo(text='Pause', enabled=True),
+												 speedInfo=ButtonInfo(text='Change Speed', enabled=False)),
 	AppState.Finished: AppInfo(statusText='Done', 
-												 startInfo=ButtonInfo(text='Reset', enabled=True))
+												 startInfo=ButtonInfo(text='Reset', enabled=True),
+												 speedInfo=ButtonInfo(text='Change Speed', enabled=True))
 	}
 
 
@@ -118,13 +146,17 @@ class HeaderLayout(BoxLayout):
 		with self.canvas.before:
 			Color(0.6, .6, 0.1, 1)  # yellow; colors range from 0-1 not 0-255
 			self.rect = Rectangle(size=self.size, pos=self.pos)
-		self.statusLabel = Label(text='Ready', color = [0.7,0.05, 0.7, 1])
+		textColor = [0.7,0.05, 0.7, 1]
+		self.speedLabel = Label(text='Animation speed: ', color=textColor)
+		self.add_widget(self.speedLabel)
+		self.statusLabel = Label(text='Ready', color = textColor)
 		self.add_widget(self.statusLabel)
-		self.fpsLabel = Label(text='0 fps', color=[0.7, 0.05, 0.7, 1])
+		self.fpsLabel = Label(text='0 fps', color=textColor)
 		self.add_widget(self.fpsLabel)
 		
-	def UpdateText(self, fps=0, statusText='Ready'):
-		self.fpsLabel.text = '{fps:.0f} fps'.format(fps=fps)
+	def UpdateText(self, fps=0, statusText='Ready', speedText=''):
+		self.speedLabel.text='Animation speed: {speed}'.format(speed=speedText)
+		self.fpsLabel.text = '{fpsValue:.0f} fps'.format(fpsValue=fps)
 		self.statusLabel.text = statusText
 
 	def update_rect(self, instance, value):
@@ -133,9 +165,13 @@ class HeaderLayout(BoxLayout):
 
 
 class FooterLayout(BoxLayout):
-	def __init__(self, start_button_callback=None, **kwargs):
+	def __init__(self, 
+							start_button_callback=None, 
+							speed_button_callback=None, 
+							**kwargs):
 		super().__init__(orientation='horizontal', padding=10, **kwargs)
 		self.start_button_callback=start_button_callback
+		self.speed_button_callback=speed_button_callback
 		self.PlaceStuff()
 		self.bind(pos=self.update_rect, size=self.update_rect)
 
@@ -144,6 +180,9 @@ class FooterLayout(BoxLayout):
 			Color(0.4, .1, 0.4, 1)  # purple; colors range from 0-1 not 0-255
 			self.rect = Rectangle(size=self.size, pos=self.pos)
 		
+		self.speedButton = Button()
+		self.add_widget(self.speedButton)
+		self.speedButton.bind(on_press=self.speed_button_callback)
 		self.startButton = Button(text='')
 		self.add_widget(self.startButton)
 		self.startButton.bind(on_press=self.start_button_callback)
@@ -157,7 +196,10 @@ class FooterLayout(BoxLayout):
 		startInfo = appInfo.startInfo
 		self.startButton.text = startInfo.text
 		self.startButton.disabled = not startInfo.enabled
-
+		speedInfo = appInfo.speedInfo
+		self.speedButton.text=speedInfo.text
+		self.speedButton.disabled = not speedInfo.enabled
+		
 
 class Rotator(App):
 	def build(self):
@@ -166,7 +208,9 @@ class Rotator(App):
 		self.algorithm = Algorithm.Reverse
 		self.clock=None
 		self.generator=None
-		self.array = list(range(10))
+		self.simulationLength = 100
+		self.array = list(range(self.simulationLength))
+		self.speed = Speed.Slow
 
 		# header
 		self.header = HeaderLayout(size_hint=(1, .1))
@@ -178,16 +222,11 @@ class Rotator(App):
 
 		# footer
 		self.footer = FooterLayout(size_hint=(1, .2), 
-														 start_button_callback=self.StartButtonCallback)
+														 start_button_callback=self.StartButtonCallback,
+														 speed_button_callback=self.SpeedButtonCallback)
 		layout.add_widget(self.footer)
 
-		# self.solver = SudokuSolver(easyBoard, yieldLevel=0)
-		# board = self.solver.board
-		# self.boardLayout.InitBoard(board)
-
-		# self.generator = self.solver.Generate()
-		# Clock.schedule_interval(self.FrameN, 0.0)
-
+		self.UpdateUX(state=self.state, speed=self.speed)
 		return layout
 
 	def FrameN(self, dt):
@@ -203,30 +242,35 @@ class Rotator(App):
 		try:
 			result = next(self.generator)
 			self.boardLayout.UpdateColors(self.array)
-			self.UpdateUX(fps=fpsValue, state=self.state)
+			self.UpdateUX(fps=fpsValue, state=self.state, speed=self.speed)
 		except StopIteration:
 			self.state=AppState.Finished
 			self.clock.cancel()
 			self.generator=None
-			self.UpdateUX(fps=fpsValue, state=self.state)
+			self.UpdateUX(fps=fpsValue, state=self.state, speed=self.speed)
 
-	def UpdateUX(self, fps=0, state=AppState.Ready):
+	def UpdateUX(self, fps=0, state=AppState.Ready, speed=Speed.Slow):
 		appInfo = infoFromState[self.state]
-		self.header.UpdateText(fps = fps)
+		self.header.UpdateText(fps = fps, speedText=infoFromSpeed[speed].statusText)
 		self.footer.UpdateButtons(appInfo=appInfo)
 
 	def StartButtonCallback(self, instance):
 		if self.state==AppState.Ready:
-			self.array = list(range(10))
+			self.array = list(range(self.simulationLength))
 			self.generator=Reverse(self.array)
-			self.clock = Clock.schedule_interval(self.FrameN, 1.0)
+			self.clock = Clock.schedule_interval(self.FrameN, 
+																				1.0/infoFromSpeed[self.speed].fps)
 		if self.state==AppState.Running:
 			self.clock.cancel()
 		if self.state==AppState.Finished:
-			self.array = list(range(10))
+			self.array = list(range(self.simulationLength))
 			self.boardLayout.UpdateColors(self.array)
 		self.state = nextState[self.state]
-		self.UpdateUX(state=self.state)
+		self.UpdateUX(state=self.state, speed=self.speed)
+
+	def SpeedButtonCallback(self, instance):
+		self.speed = nextSpeed[self.speed]
+		self.UpdateUX(speed=self.speed)
 
 
 def Main():
