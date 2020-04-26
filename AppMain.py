@@ -8,7 +8,7 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.clock import Clock
-from Rotators import ReverseAll, ReverseRotation, SwapRotation
+from Rotators import ReverseAll, ReverseRotation, SwapRotation, RoundRobinRotation
 
 class AppState(Enum):
 	Ready = 1
@@ -28,11 +28,13 @@ class Algorithm(Enum):
 	Reverse = 1
 	ReverseRotation=2
 	SwapRotation=3
+	RoundRobinRotation=4
 
 nextAlgorithm={
 	Algorithm.Reverse: Algorithm.ReverseRotation,
 	Algorithm.ReverseRotation: Algorithm.SwapRotation,
-	Algorithm.SwapRotation: Algorithm.Reverse
+	Algorithm.SwapRotation: Algorithm.RoundRobinRotation,
+	Algorithm.RoundRobinRotation: Algorithm.Reverse
 	}
 
 class AlgorithmInfo:
@@ -43,7 +45,8 @@ class AlgorithmInfo:
 infoFromAlgorithm = {
 	Algorithm.Reverse: AlgorithmInfo('Reverse', ReverseAll),
 	Algorithm.ReverseRotation: AlgorithmInfo('Rotation by Reverse', ReverseRotation),
-	Algorithm.SwapRotation: AlgorithmInfo('Rotation by Swapping', SwapRotation)
+	Algorithm.SwapRotation: AlgorithmInfo('Rotation by Swapping', SwapRotation),
+	Algorithm.RoundRobinRotation: AlgorithmInfo('Rotation Round Robin', RoundRobinRotation)
 	}
 
 
@@ -106,10 +109,9 @@ infoFromState = {
 
 # BoardLayout encapsulates the playing board
 class BoardLayout(BoxLayout):
-	def __init__(self, numCells):
+	def __init__(self, numCells, shift, algorithm=Algorithm.Reverse):
 		super().__init__()
-		self.numCells = numCells
-		self.PlaceStuff()
+		self.PlaceStuff(numCells, shift, algorithm)
 		self.bind(pos=self.update_rect, size=self.update_rect)
 
 	def InterpolateColor(self, beginColor, endColor, ratio):
@@ -118,41 +120,61 @@ class BoardLayout(BoxLayout):
 			betweenColor.append(beginColor[colorIndex]*ratio + endColor[colorIndex]*(1-ratio))
 		return betweenColor
 
-	def PlaceStuff(self):
+	def PlaceStuff(self, numCells, shift, algorithm):
+		self.numCells = numCells
+
 		with self.canvas.before:
 			Color(0.1, .3, 0.1, 1)  # green; colors range from 0-1 not 0-255
 			self.rect = Rectangle(size=self.size, pos=self.pos)
 		
+		ymin = self.pos[1]+5
+		height = self.size[1]/3 - 10
 		self.rectangles = []
-		self.colorValues = []
 		self.colors = []
-		pos = [0,0]
-		posNext = [self.rect.size[0]/self.numCells, 0]
 		beginColor = [0.0, .75, .25, 1]
 		endColor = [0.0, .25, .75, 1]
+		self.colorValues = self.CreateColorList(beginColor, endColor, self.numCells)
+		
+		[self.rectangles, self.colors] = self.CreateRectangles(self.colorValues)
+
+	def CreateColorList(self, beginColor, endColor, numColors):
+		colorList = []
+		for colorIndex in range(numColors):
+			betweenColor = self.InterpolateColor(beginColor, endColor, float(colorIndex)/self.numCells)
+			colorList.append(betweenColor)
+		return colorList
+
+	def CreateRectangles(self, colorValues):
+		rectangles = []
+		colors = []
 		with self.canvas:
 			for cell in range(self.numCells):
-				betweenColor = self.InterpolateColor(beginColor, endColor, float(cell)/self.numCells)
-				self.colorValues.append(betweenColor)
+				betweenColor = colorValues[cell]
 				color = Color(betweenColor[0], betweenColor[1], betweenColor[2], betweenColor[3])
-				self.colors.append(color)
-				size = [posNext[0]-pos[0], self.rect.size[1]]
-				rect= Rectangle(size=size, pos=pos)
-				self.rectangles.append(rect)
-				pos = posNext.copy()
-				posNext = [self.rect.size[0]*cell/self.numCells, 0]
-			
+				colors.append(color)
+				rect= Rectangle(size=[1,1], pos=[0,0])
+				rectangles.append(rect)
+		return [rectangles, colors]
+
+	def UpdateRectangle(self, rectangles, canvasPos, canvasSize, ymin, height):
+		numCells = len(rectangles)
+		for cell in range(numCells):
+			rect = rectangles[cell]
+			pos = [canvasPos[0]+canvasSize[0]*cell/numCells, ymin]
+			size = [canvasPos[0]+canvasSize[0]*(cell+1)/numCells-pos[0], height]
+			rect.pos = pos
+			rect.size = size
+
 	def update_rect(self, instance, value):
 		instance.rect.pos = instance.pos
 		instance.rect.size = instance.size
 
 		numCells = len(instance.rectangles)
-		for cell in range(numCells):
-			rect = instance.rectangles[cell]
-			pos = [instance.pos[0]+instance.size[0]*cell/numCells, instance.pos[1]]
-			size = [instance.pos[0]+instance.size[0]*(cell+1)/numCells-pos[0], instance.size[1]]
-			rect.pos = pos
-			rect.size = size
+		self.UpdateRectangle(instance.rectangles, 
+											 instance.pos, 
+											 instance.size, 
+											 instance.pos[1]+instance.size[1]/3+5, 
+											 instance.size[1]/3-10)
 
 	def ApplyColor(self, color, colorList):
 		color.r = colorList[0]
@@ -248,7 +270,7 @@ class Rotator(App):
 		self.clock=None
 		self.generator=None
 		self.simulationLength = 500
-		self.rotationShift = 150
+		self.rotationShift = 225
 		self.array = list(range(self.simulationLength))
 		self.speed = Speed.Slow
 
@@ -257,7 +279,7 @@ class Rotator(App):
 		layout.add_widget(self.header)
 
 		# board
-		self.boardLayout = boardLayout = BoardLayout(len(self.array))
+		self.boardLayout = boardLayout = BoardLayout(len(self.array), self.rotationShift)
 		layout.add_widget(boardLayout)
 
 		# footer

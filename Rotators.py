@@ -54,3 +54,29 @@ def RotateSwap(array, start, finish, shift):
 
 def SwapRotation(array, shift):
 	yield from RotateSwap(array, 0, len(array), shift)
+
+
+def GetNext(current, shift, start, finish):
+	next = current + shift
+	if next >= finish:
+		next = start+next-finish
+	return next
+	
+def RotateRound(array, start, finish, shift):
+	current = start
+	moved = 0
+	while moved < finish-start:
+		first = current
+		second = GetNext(first, shift, start, finish)
+		while second != current:
+			yield from Swap(array, first, second)
+			moved = moved+1
+			first = second
+			second = GetNext(second, shift, start, finish)
+		current = current+1
+		moved = moved+1
+	return
+
+def RoundRobinRotation(array, shift):
+	yield from RotateRound(array, 0, len(array), shift)
+		
