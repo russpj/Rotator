@@ -93,7 +93,7 @@ infoFromState = {
 	AppState.Paused: AppInfo(statusText='Paused {algorithm}', 
 												 startInfo=ButtonInfo(text='Resume', enabled=True),
 												 algorithmInfo=ButtonInfo(text='Change Algorithm', enabled=False),
-												 speedInfo=ButtonInfo(text='Change Speed', enabled=False)),
+												 speedInfo=ButtonInfo(text='Change Speed', enabled=True)),
 	AppState.Finished: AppInfo(statusText='Done with {algorithm}', 
 												 startInfo=ButtonInfo(text='Reset', enabled=True),
 												 algorithmInfo=ButtonInfo(text='Change Algorithm', enabled=False),
@@ -244,8 +244,8 @@ class Rotator(App):
 		self.algorithm = Algorithm.Reverse
 		self.clock=None
 		self.generator=None
-		self.simulationLength = 100
-		self.rotationShift = 33
+		self.simulationLength = 500
+		self.rotationShift = 150
 		self.array = list(range(self.simulationLength))
 		self.speed = Speed.Slow
 
