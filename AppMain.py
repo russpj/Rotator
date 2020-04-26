@@ -129,13 +129,16 @@ class BoardLayout(BoxLayout):
 		
 		ymin = self.pos[1]+5
 		height = self.size[1]/3 - 10
-		self.rectangles = []
-		self.colors = []
 		beginColor = [0.0, .75, .25, 1]
 		endColor = [0.0, .25, .75, 1]
 		self.colorValues = self.CreateColorList(beginColor, endColor, self.numCells)
 		
 		[self.rectangles, self.colors] = self.CreateRectangles(self.colorValues)
+		[self.beforeRectangles, colors] = self.CreateRectangles(self.colorValues)
+		reversedColorValues = [cv for cv in reversed(self.colorValues)]
+		[self.afterRectangles, self.targetColors] = self.CreateRectangles(reversedColorValues)
+
+		return
 
 	def CreateColorList(self, beginColor, endColor, numColors):
 		colorList = []
@@ -156,7 +159,7 @@ class BoardLayout(BoxLayout):
 				rectangles.append(rect)
 		return [rectangles, colors]
 
-	def UpdateRectangle(self, rectangles, canvasPos, canvasSize, ymin, height):
+	def UpdateRectangles(self, rectangles, canvasPos, canvasSize, ymin, height):
 		numCells = len(rectangles)
 		for cell in range(numCells):
 			rect = rectangles[cell]
@@ -170,10 +173,22 @@ class BoardLayout(BoxLayout):
 		instance.rect.size = instance.size
 
 		numCells = len(instance.rectangles)
-		self.UpdateRectangle(instance.rectangles, 
+		self.UpdateRectangles(instance.rectangles, 
 											 instance.pos, 
 											 instance.size, 
 											 instance.pos[1]+instance.size[1]/3+5, 
+											 instance.size[1]/3-10)
+
+		self.UpdateRectangles(instance.beforeRectangles,
+											 instance.pos, 
+											 instance.size, 
+											 instance.pos[1]+instance.size[1]*2/3+5, 
+											 instance.size[1]/3-10)
+
+		self.UpdateRectangles(instance.afterRectangles,
+											 instance.pos, 
+											 instance.size, 
+											 instance.pos[1]+5, 
 											 instance.size[1]/3-10)
 
 	def ApplyColor(self, color, colorList):
@@ -182,11 +197,14 @@ class BoardLayout(BoxLayout):
 		color.b = colorList[2]
 		color.a = colorList[3]
 
-	def UpdateColors(self, colorIndices=None):
+	def UpdateColorsHelper(self, colors, colorIndices, colorValues):
 		if colorIndices is not None:
 			for index in range(len(colorIndices)):
-				if index < len(self.colors):
-					self.ApplyColor(self.colors[index], self.colorValues[colorIndices[index]])
+				if index < len(colors):
+					self.ApplyColor(colors[index], colorValues[colorIndices[index]])
+		
+	def UpdateColors(self, colorIndices=None, colorTargetIndices=None):
+		self.UpdateColorsHelper(self.colors, colorIndices, self.colorValues)
 
 
 class HeaderLayout(BoxLayout):
