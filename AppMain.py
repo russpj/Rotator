@@ -109,8 +109,8 @@ infoFromState = {
 
 # BoardLayout encapsulates the playing board
 class BoardLayout(BoxLayout):
-	def __init__(self, numCells, shift, algorithm=Algorithm.Reverse):
-		super().__init__()
+	def __init__(self, numCells, shift, algorithm=Algorithm.Reverse, **kwargs):
+		super().__init__(orientation='vertical', **kwargs)
 		self.PlaceStuff(numCells, shift, algorithm)
 		self.bind(pos=self.update_rect, size=self.update_rect)
 
@@ -133,10 +133,14 @@ class BoardLayout(BoxLayout):
 		endColor = [0.0, .25, .75, 1]
 		self.colorValues = self.CreateColorList(beginColor, endColor, self.numCells)
 		
-		[self.rectangles, self.colors] = self.CreateRectangles(self.colorValues)
-		[self.beforeRectangles, colors] = self.CreateRectangles(self.colorValues)
+		self.rectangles, self.colors = self.CreateRectangles(self.colorValues)
+		self.beforeRectangles, colors = self.CreateRectangles(self.colorValues)
 		reversedColorValues = [cv for cv in reversed(self.colorValues)]
-		[self.afterRectangles, self.targetColors] = self.CreateRectangles(reversedColorValues)
+		self.afterRectangles, self.targetColors = self.CreateRectangles(reversedColorValues)
+
+		self.add_widget(Label(text='Original'))
+		self.add_widget(Label(text='Algorithm Animation'))
+		self.add_widget(Label(text='Target'))
 
 		return
 
@@ -157,7 +161,7 @@ class BoardLayout(BoxLayout):
 				colors.append(color)
 				rect= Rectangle(size=[1,1], pos=[0,0])
 				rectangles.append(rect)
-		return [rectangles, colors]
+		return rectangles, colors
 
 	def UpdateRectangles(self, rectangles, canvasPos, canvasSize, ymin, height):
 		numCells = len(rectangles)
@@ -219,9 +223,9 @@ class HeaderLayout(BoxLayout):
 			Color(0.6, .6, 0.1, 1)  # yellow; colors range from 0-1 not 0-255
 			self.rect = Rectangle(size=self.size, pos=self.pos)
 		textColor = [0.7,0.05, 0.7, 1]
-		self.speedLabel = Label(text='Speed: ', color=textColor, size_hint=[.25, 1])
+		self.speedLabel = Label(text='Speed: ', color=textColor, size_hint=[.3, 1])
 		self.add_widget(self.speedLabel)
-		self.statusLabel = Label(text='Ready', color = textColor)
+		self.statusLabel = Label(text='Ready', color = textColor, size_hint=[.5, 1])
 		self.add_widget(self.statusLabel)
 		self.fpsLabel = Label(text='0 fps', color=textColor, size_hint=[.2, 1])
 		self.add_widget(self.fpsLabel)
@@ -288,8 +292,8 @@ class Rotator(App):
 		self.algorithm = Algorithm.Reverse
 		self.clock=None
 		self.generator=None
-		self.simulationLength = 500
-		self.rotationShift = 225
+		self.simulationLength = 100
+		self.rotationShift = 40
 		self.array = list(range(self.simulationLength))
 		self.speed = Speed.Slow
 
